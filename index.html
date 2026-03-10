@@ -79,7 +79,6 @@
       margin: 0 auto;
       padding: 24px;
       display: none;
-      gap: 18px;
     }
 
     .hero, .card {
@@ -205,6 +204,7 @@
       width: 100%;
       height: 380px;
       display: block;
+      background: transparent;
     }
 
     .resultBox {
@@ -334,7 +334,7 @@
   <div class="page" id="page">
     <div class="hero">
       <h1>YoRHa Dice Interface</h1>
-      <p>Tactical Probability Engine • True Polyhedra Edition</p>
+      <p>Tactical Probability Engine • Stable Edition</p>
     </div>
 
     <div class="grid">
@@ -358,7 +358,7 @@
 
             <div>
               <label for="diceCount">Number of dice</label>
-              <input id="diceCount" type="number" min="1" max="10" value="1" />
+              <input id="diceCount" type="number" min="1" max="12" value="1" />
             </div>
 
             <div>
@@ -383,7 +383,7 @@
           </div>
 
           <div class="note">
-            D4, D6, D8, D12, and D20 use true polyhedral meshes. D10 and D100 still use simplified tray visuals, but their roll results are correct.
+            This version uses a built-in canvas dice tray instead of external 3D libraries, so it is much more reliable on GitHub Pages.
           </div>
         </div>
       </div>
@@ -409,11 +409,7 @@
     </div>
   </div>
 
-  <script type="module">
-    import * as THREE from 'https://unpkg.com/three@0.160.0/build/three.module.js';
-    import { OrbitControls } from 'https://unpkg.com/three@0.160.0/examples/jsm/controls/OrbitControls.js';
-    import * as CANNON from 'https://cdn.skypack.dev/cannon-es';
-
+  <script>
     const state = {
       history: [],
       stats: {
@@ -429,7 +425,7 @@
     const bootLines = [
       'YoRHa Tactical Support System',
       'Initializing probability engine...',
-      'Loading polyhedral dice meshes...',
+      'Loading tactical dice tray...',
       'System ready.'
     ];
 
@@ -462,8 +458,8 @@
         setTimeout(() => {
           document.getElementById('boot').style.display = 'none';
           page.style.display = 'block';
-          resizeRenderer();
-          animate();
+          resizeCanvas();
+          drawTray();
         }, 700);
       }
     }
@@ -476,7 +472,7 @@
       const match = input.trim().toLowerCase().match(/^(\d*)d(\d+)([+-]\d+)?$/);
       if (!match) return null;
       return {
-        count: Math.max(1, Math.min(10, parseInt(match[1] || '1', 10))),
+        count: Math.max(1, Math.min(12, parseInt(match[1] || '1', 10))),
         sides: parseInt(match[2], 10),
         modifier: parseInt(match[3] || '0', 10)
       };
@@ -612,304 +608,172 @@
     rollButtonEl.addEventListener('mouseenter', () => tone(520, 0.03, 'square', 0.01, 0));
 
     const canvas = document.getElementById('tray');
-    const scene = new THREE.Scene();
+    const ctx = canvas.getContext('2d');
+    let diceSprites = [];
+    let animationFrame = null;
 
-    const camera = new THREE.PerspectiveCamera(50, 1, 0.1, 100);
-    camera.position.set(0, 9, 12);
-
-    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-
-    const controls = new OrbitControls(camera, canvas);
-    controls.enablePan = false;
-    controls.enableZoom = false;
-    controls.target.set(0, 0, 0);
-    controls.update();
-
-    scene.add(new THREE.AmbientLight(0xffffff, 0.7));
-
-    const dirLight = new THREE.DirectionalLight(0xffffff, 1.1);
-    dirLight.position.set(6, 12, 8);
-    dirLight.castShadow = true;
-    dirLight.shadow.mapSize.set(1024, 1024);
-    scene.add(dirLight);
-
-    const floorGeo = new THREE.PlaneGeometry(18, 18);
-    const floorMat = new THREE.MeshStandardMaterial({
-      color: 0x222222,
-      transparent: true,
-      opacity: 0.72,
-      roughness: 0.9,
-      metalness: 0.08
-    });
-    const floorMesh = new THREE.Mesh(floorGeo, floorMat);
-    floorMesh.rotation.x = -Math.PI / 2;
-    floorMesh.receiveShadow = true;
-    scene.add(floorMesh);
-
-    const world = new CANNON.World({
-      gravity: new CANNON.Vec3(0, -22, 0)
-    });
-    world.allowSleep = true;
-
-    const floorBody = new CANNON.Body({
-      type: CANNON.Body.STATIC,
-      shape: new CANNON.Plane()
-    });
-    floorBody.quaternion.setFromEuler(-Math.PI / 2, 0, 0);
-    world.addBody(floorBody);
-
-    const wallMaterial = new CANNON.Material('wall');
-    const diceMaterial = new CANNON.Material('dice');
-    const contactMaterial = new CANNON.ContactMaterial(diceMaterial, wallMaterial, {
-      restitution: 0.45,
-      friction: 0.25
-    });
-    world.addContactMaterial(contactMaterial);
-
-    function addWall(x, y, z, sx, sy, sz) {
-      const body = new CANNON.Body({
-        type: CANNON.Body.STATIC,
-        material: wallMaterial,
-        shape: new CANNON.Box(new CANNON.Vec3(sx / 2, sy / 2, sz / 2)),
-        position: new CANNON.Vec3(x, y, z)
-      });
-      world.addBody(body);
+    function resizeCanvas() {
+      const rect = canvas.getBoundingClientRect();
+      canvas.width = Math.floor(rect.width * devicePixelRatio);
+      canvas.height = Math.floor(rect.height * devicePixelRatio);
+      ctx.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0);
     }
 
-    addWall(0, 1, -8.5, 18, 2, 1);
-    addWall(0, 1, 8.5, 18, 2, 1);
-    addWall(-8.5, 1, 0, 1, 2, 18);
-    addWall(8.5, 1, 0, 1, 2, 18);
+    function drawDieSprite(die) {
+      ctx.save();
+      ctx.translate(die.x, die.y);
+      ctx.rotate(die.angle);
 
-    const diceObjects = [];
+      const size = die.size;
+      const half = size / 2;
 
-    function makeFaceCanvas(label) {
-      const size = 256;
-      const c = document.createElement('canvas');
-      c.width = size;
-      c.height = size;
-      const ctx = c.getContext('2d');
+      ctx.fillStyle = die.fill;
+      ctx.strokeStyle = die.stroke;
+      ctx.lineWidth = 2;
 
-      ctx.fillStyle = '#e5e1d5';
-      ctx.fillRect(0, 0, size, size);
-
-      ctx.strokeStyle = '#6a6a6a';
-      ctx.lineWidth = 10;
-      ctx.strokeRect(8, 8, size - 16, size - 16);
+      if (die.shape === 'square') {
+        ctx.fillRect(-half, -half, size, size);
+        ctx.strokeRect(-half, -half, size, size);
+      } else {
+        const sidesMap = { triangle: 3, diamond: 4, pentagon: 5, hexagon: 6, octagon: 8 };
+        const pts = sidesMap[die.shape] || 6;
+        ctx.beginPath();
+        for (let i = 0; i < pts; i++) {
+          const a = (-Math.PI / 2) + (i * Math.PI * 2 / pts);
+          const px = Math.cos(a) * half;
+          const py = Math.sin(a) * half;
+          if (i === 0) ctx.moveTo(px, py);
+          else ctx.lineTo(px, py);
+        }
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+      }
 
       ctx.fillStyle = '#1c1c1c';
-      ctx.font = 'bold 112px Segoe UI, Arial';
+      ctx.font = `bold ${Math.max(14, size * 0.32)}px Segoe UI`;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText(label, size / 2, size / 2);
+      ctx.fillText(String(die.value), 0, 0);
 
-      return new THREE.CanvasTexture(c);
+      ctx.restore();
     }
 
-    function makeFaceMaterials(value, sides) {
-      const sideLabel = 'D' + sides;
-      return [
-        new THREE.MeshStandardMaterial({ map: makeFaceCanvas(String(value)) }),
-        new THREE.MeshStandardMaterial({ map: makeFaceCanvas(sideLabel) }),
-        new THREE.MeshStandardMaterial({ map: makeFaceCanvas(sideLabel) }),
-        new THREE.MeshStandardMaterial({ map: makeFaceCanvas(sideLabel) }),
-        new THREE.MeshStandardMaterial({ map: makeFaceCanvas(sideLabel) }),
-        new THREE.MeshStandardMaterial({ map: makeFaceCanvas(sideLabel) })
-      ];
+    function drawTray() {
+      const w = canvas.clientWidth;
+      const h = canvas.clientHeight;
+
+      ctx.clearRect(0, 0, w, h);
+
+      for (const die of diceSprites) {
+        drawDieSprite(die);
+      }
     }
 
-    function createTrueGeometry(sides, size = 1.0) {
+    function stepDice() {
+      const w = canvas.clientWidth;
+      const h = canvas.clientHeight;
+
+      let moving = false;
+
+      for (const die of diceSprites) {
+        die.vy += 0.35;
+        die.x += die.vx;
+        die.y += die.vy;
+        die.angle += die.spin;
+
+        const half = die.size / 2;
+
+        if (die.x + half > w) {
+          die.x = w - half;
+          die.vx *= -0.78;
+          die.spin *= 0.9;
+        }
+        if (die.x - half < 0) {
+          die.x = half;
+          die.vx *= -0.78;
+          die.spin *= 0.9;
+        }
+        if (die.y + half > h) {
+          die.y = h - half;
+          die.vy *= -0.68;
+          die.vx *= 0.95;
+          die.spin *= 0.92;
+        }
+        if (die.y - half < 0) {
+          die.y = half;
+          die.vy *= -0.78;
+        }
+
+        if (Math.abs(die.vx) > 0.08 || Math.abs(die.vy) > 0.08 || Math.abs(die.spin) > 0.01) {
+          moving = true;
+        } else {
+          die.vx = 0;
+          die.vy = 0;
+          die.spin = 0;
+        }
+      }
+
+      drawTray();
+
+      if (moving) {
+        animationFrame = requestAnimationFrame(stepDice);
+      } else {
+        animationFrame = null;
+      }
+    }
+
+    function shapeForSides(sides) {
       switch (sides) {
-        case 4:
-          return new THREE.TetrahedronGeometry(size);
-        case 6:
-          return new THREE.BoxGeometry(size * 1.4, size * 1.4, size * 1.4);
-        case 8:
-          return new THREE.OctahedronGeometry(size);
-        case 12:
-          return new THREE.DodecahedronGeometry(size);
-        case 20:
-          return new THREE.IcosahedronGeometry(size);
-        default:
-          return new THREE.BoxGeometry(size * 1.4, size * 1.4, size * 1.4);
+        case 4: return 'triangle';
+        case 6: return 'square';
+        case 8: return 'diamond';
+        case 10: return 'pentagon';
+        case 12: return 'hexagon';
+        case 20: return 'octagon';
+        case 100: return 'octagon';
+        default: return 'square';
       }
     }
 
-    function createTrueCannonShape(sides, size = 1.0) {
-      switch (sides) {
-        case 4: {
-          const s = size;
-          return new CANNON.ConvexPolyhedron({
-            vertices: [
-              new CANNON.Vec3( s,  s,  s),
-              new CANNON.Vec3(-s, -s,  s),
-              new CANNON.Vec3(-s,  s, -s),
-              new CANNON.Vec3( s, -s, -s)
-            ],
-            faces: [
-              [0, 2, 1],
-              [0, 1, 3],
-              [0, 3, 2],
-              [1, 2, 3]
-            ]
-          });
-        }
-        case 6: {
-          const s = size * 0.7;
-          return new CANNON.Box(new CANNON.Vec3(s, s, s));
-        }
-        case 8: {
-          const s = size;
-          return new CANNON.ConvexPolyhedron({
-            vertices: [
-              new CANNON.Vec3( s, 0, 0),
-              new CANNON.Vec3(-s, 0, 0),
-              new CANNON.Vec3(0,  s, 0),
-              new CANNON.Vec3(0, -s, 0),
-              new CANNON.Vec3(0, 0,  s),
-              new CANNON.Vec3(0, 0, -s)
-            ],
-            faces: [
-              [0,2,4],[2,1,4],[1,3,4],[3,0,4],
-              [2,0,5],[1,2,5],[3,1,5],[0,3,5]
-            ]
-          });
-        }
-        case 12:
-        case 20: {
-          const geom = createTrueGeometry(sides, size);
-          const pos = geom.attributes.position.array;
-          const verts = [];
-          for (let i = 0; i < pos.length; i += 3) {
-            verts.push(new CANNON.Vec3(pos[i], pos[i + 1], pos[i + 2]));
-          }
+    function throwDiceSprites(rolls, sides) {
+      if (animationFrame) cancelAnimationFrame(animationFrame);
 
-          const faces = [];
-          for (let i = 0; i < verts.length; i += 3) {
-            faces.push([i, i + 1, i + 2]);
-          }
+      const w = canvas.clientWidth;
+      const h = canvas.clientHeight;
+      const shape = shapeForSides(sides);
 
-          return new CANNON.ConvexPolyhedron({ vertices: verts, faces });
-        }
-        default: {
-          const s = size * 0.7;
-          return new CANNON.Box(new CANNON.Vec3(s, s, s));
-        }
-      }
-    }
+      diceSprites = rolls.map((value, index) => {
+        const crit = sides === 20 && value === 20;
+        const fail = sides === 20 && value === 1;
 
-    function createDieVisual(value, sides) {
-      const truePoly = [4, 6, 8, 12, 20].includes(sides);
-
-      if (truePoly) {
-        const geometry = createTrueGeometry(sides, 0.95);
-        const material = new THREE.MeshStandardMaterial({
-          color: 0xe5e1d5,
-          roughness: 0.55,
-          metalness: 0.08,
-          flatShading: true
-        });
-        const mesh = new THREE.Mesh(geometry, material);
-        mesh.castShadow = true;
-        mesh.receiveShadow = true;
-
-        const spriteMap = makeFaceCanvas(String(value));
-        const spriteMat = new THREE.SpriteMaterial({ map: spriteMap, transparent: true });
-        const sprite = new THREE.Sprite(spriteMat);
-        sprite.scale.set(0.9, 0.9, 0.9);
-        sprite.position.set(0, 1.05, 0);
-        mesh.add(sprite);
-
-        return mesh;
-      }
-
-      const geometry = new THREE.BoxGeometry(1.4, 1.4, 1.4);
-      const materials = makeFaceMaterials(value, sides);
-      const mesh = new THREE.Mesh(geometry, materials);
-      mesh.castShadow = true;
-      mesh.receiveShadow = true;
-      return mesh;
-    }
-
-    function createDieBody(sides) {
-      return new CANNON.Body({
-        mass: 1,
-        material: diceMaterial,
-        shape: createTrueCannonShape(sides, 0.95),
-        linearDamping: 0.18,
-        angularDamping: 0.18
+        return {
+          value,
+          shape,
+          size: Math.max(42, Math.min(68, 72 - rolls.length * 2)),
+          x: w * 0.5 + (index - (rolls.length - 1) / 2) * 18,
+          y: 40 + Math.random() * 30,
+          vx: (Math.random() - 0.5) * 10,
+          vy: Math.random() * 2,
+          angle: Math.random() * Math.PI * 2,
+          spin: (Math.random() - 0.5) * 0.35,
+          fill: crit ? '#d7f3f0' : fail ? '#f2d6d6' : '#e5e1d5',
+          stroke: crit ? '#8fd6d1' : fail ? '#d47d7d' : '#6a6a6a'
+        };
       });
-    }
 
-    function clearDice() {
-      while (diceObjects.length) {
-        const obj = diceObjects.pop();
-        scene.remove(obj.mesh);
-        world.removeBody(obj.body);
-      }
-    }
-
-    function throwDice(rolls, sides) {
-      clearDice();
-
-      rolls.forEach((value, index) => {
-        const mesh = createDieVisual(value, sides);
-        const body = createDieBody(sides);
-
-        const spread = (index - (rolls.length - 1) / 2) * 1.4;
-        body.position.set(spread, 6 + Math.random() * 2, (Math.random() - 0.5) * 2);
-        body.velocity.set((Math.random() - 0.5) * 6, 0, (Math.random() - 0.5) * 6);
-        body.angularVelocity.set(
-          (Math.random() - 0.5) * 16,
-          (Math.random() - 0.5) * 16,
-          (Math.random() - 0.5) * 16
-        );
-
-        mesh.position.copy(body.position);
-        mesh.quaternion.copy(body.quaternion);
-
-        scene.add(mesh);
-        world.addBody(body);
-        diceObjects.push({ mesh, body });
-      });
-    }
-
-    function resizeRenderer() {
-      const rect = canvas.getBoundingClientRect();
-      const width = Math.max(300, Math.floor(rect.width));
-      const height = Math.max(240, Math.floor(rect.height));
-
-      renderer.setSize(width, height, false);
-      camera.aspect = width / height;
-      camera.updateProjectionMatrix();
-    }
-
-    window.addEventListener('resize', resizeRenderer);
-
-    function animate() {
-      requestAnimationFrame(animate);
-      world.step(1 / 60);
-
-      for (const obj of diceObjects) {
-        obj.mesh.position.copy(obj.body.position);
-        obj.mesh.quaternion.copy(obj.body.quaternion);
-      }
-
-      controls.update();
-      renderer.render(scene, camera);
+      drawTray();
+      animationFrame = requestAnimationFrame(stepDice);
     }
 
     function runRoll(count, sides, modifier = 0, labelOverride = null) {
       const rolls = Array.from({ length: count }, () => randomDie(sides));
 
-      const ctx = getAudio();
-      if (ctx && ctx.state === 'suspended') ctx.resume();
+      const audio = getAudio();
+      if (audio && audio.state === 'suspended') audio.resume();
 
       playRollSound();
-      throwDice(rolls, sides);
+      throwDiceSprites(rolls, sides);
 
       recordRoll({
         label: labelOverride || `${count}d${sides}${modifier ? (modifier > 0 ? '+' : '') + modifier : ''}`,
@@ -929,7 +793,7 @@
     }
 
     rollButtonEl.addEventListener('click', () => {
-      const count = Math.max(1, Math.min(10, parseInt(diceCountEl.value || '1', 10)));
+      const count = Math.max(1, Math.min(12, parseInt(diceCountEl.value || '1', 10)));
       const sides = parseInt(dieTypeEl.value, 10);
       diceCountEl.value = count;
       runRoll(count, sides, 0);
@@ -947,6 +811,11 @@
 
       runRoll(parsed.count, parsed.sides, parsed.modifier, diceCommandEl.value.trim().toLowerCase());
       diceCommandEl.value = '';
+    });
+
+    window.addEventListener('resize', () => {
+      resizeCanvas();
+      drawTray();
     });
 
     renderHistory();
