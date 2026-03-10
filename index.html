@@ -80,11 +80,63 @@
       white-space: pre-line;
     }
 
-    .page {
-      max-width: 1180px;
+    .appShell{
+      max-width: 1280px;
       margin: 0 auto;
       padding: 18px;
       display: none;
+      grid-template-columns: 88px 1fr;
+      gap: 16px;
+    }
+
+    .navRail{
+      background: rgba(14,14,14,0.92);
+      border: 1px solid var(--line);
+      box-shadow: 0 0 0 1px rgba(255,255,255,.03) inset;
+      min-height: calc(100vh - 36px);
+      position: sticky;
+      top: 18px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 14px 10px;
+      gap: 14px;
+    }
+
+    .railMark{
+      width: 100%;
+      text-align: center;
+      font-size: 10px;
+      letter-spacing: .18em;
+      text-transform: uppercase;
+      color: var(--muted);
+      writing-mode: vertical-rl;
+      transform: rotate(180deg);
+      opacity: .75;
+      padding-top: 8px;
+    }
+
+    .railDivider{
+      width: 26px;
+      height: 1px;
+      background: var(--line);
+      margin: 4px 0;
+    }
+
+    .railDot{
+      width: 12px;
+      height: 12px;
+      border: 1px solid var(--line-strong);
+      background: rgba(255,255,255,.08);
+    }
+
+    .railDot.active{
+      background: var(--accent);
+      box-shadow: 0 0 12px rgba(216,210,196,.22);
+    }
+
+    .page {
+      min-width: 0;
     }
 
     .topbar{
@@ -387,6 +439,27 @@
       flex-wrap:wrap;
     }
 
+    @media (max-width: 980px) {
+      .appShell{
+        grid-template-columns: 1fr;
+      }
+
+      .navRail{
+        min-height:auto;
+        position:relative;
+        top:auto;
+        flex-direction:row;
+        justify-content:center;
+        padding:10px 12px;
+      }
+
+      .railMark{
+        writing-mode:horizontal-tb;
+        transform:none;
+        padding-top:0;
+      }
+    }
+
     @media (max-width: 900px) {
       .grid {
         grid-template-columns: 1fr;
@@ -402,7 +475,7 @@
         grid-template-columns: 1fr;
       }
 
-      .page {
+      .appShell {
         padding: 12px;
       }
 
@@ -419,96 +492,108 @@
 <body>
   <div id="boot"><div id="bootText"></div></div>
 
-  <div class="page" id="page">
-    <div class="topbar">
-      <div class="topbar-left">
-        <span><span class="status-dot"></span>System Online</span>
-        <span>Unit: Pod Support</span>
-      </div>
-      <div class="topbar-right">
-        <span>Mode: Tactical Probability</span>
-        <span id="clockText">--:--:--</span>
-      </div>
-    </div>
+  <div class="appShell" id="appShell">
+    <aside class="navRail">
+      <div class="railMark">YoRHa</div>
+      <div class="railDivider"></div>
+      <div class="railDot active"></div>
+      <div class="railDot"></div>
+      <div class="railDot"></div>
+      <div class="railDivider"></div>
+      <div class="railMark">Pod</div>
+    </aside>
 
-    <div class="hero">
-      <h1>YoRHa Dice Interface</h1>
-      <p>Tactical Probability Engine • Terminal Display</p>
-    </div>
-
-    <div class="grid">
-      <div>
-        <div class="card">
-          <div class="section-kicker">Probability Engine</div>
-          <h3>Dice Tray</h3>
-
-          <div class="controls">
-            <div>
-              <label for="dieType">Die type</label>
-              <select id="dieType">
-                <option value="4">D4</option>
-                <option value="6">D6</option>
-                <option value="8">D8</option>
-                <option value="10">D10</option>
-                <option value="12">D12</option>
-                <option value="20" selected>D20</option>
-                <option value="100">D100</option>
-              </select>
-            </div>
-
-            <div>
-              <label for="diceCount">Number of dice</label>
-              <input id="diceCount" type="number" min="1" max="12" value="1" />
-            </div>
-
-            <div>
-              <label>&nbsp;</label>
-              <button id="rollButton" type="button">Roll</button>
-            </div>
-          </div>
-
-          <div class="command">
-            <label for="diceCommand">Command input</label>
-            <input id="diceCommand" type="text" placeholder="Examples: 2d20+3, 4d6, 1d100" />
-          </div>
-
-          <div id="trayWrap">
-            <div class="tray-overlay">Display: Active</div>
-            <canvas id="tray"></canvas>
-          </div>
-
-          <div class="resultBox">
-            <div class="resultLabel">Result Output</div>
-            <div class="resultMain" id="resultMain">-</div>
-            <div class="resultSub" id="resultSub">Awaiting input.</div>
-            <div class="highlight" id="highlight"></div>
-          </div>
-
-          <div class="footerbar">
-            <span>Subsystem: Dice Interpreter</span>
-            <span>Operator Status: Ready</span>
-          </div>
+    <div class="page" id="page">
+      <div class="topbar">
+        <div class="topbar-left">
+          <span><span class="status-dot"></span>System Online</span>
+          <span>Unit: Pod Support</span>
+        </div>
+        <div class="topbar-right">
+          <span>Mode: Tactical Probability</span>
+          <span id="clockText">--:--:--</span>
         </div>
       </div>
 
-      <div>
-        <div class="card">
-          <div class="section-kicker">Telemetry</div>
-          <h3>Statistics</h3>
-          <div class="statsGrid">
-            <div class="statBox"><div class="statLabel">Rolls</div><div class="statValue" id="statRolls">0</div></div>
-            <div class="statBox"><div class="statLabel">Dice rolled</div><div class="statValue" id="statDice">0</div></div>
-            <div class="statBox"><div class="statLabel">Average</div><div class="statValue" id="statAverage">-</div></div>
-            <div class="statBox"><div class="statLabel">Highest</div><div class="statValue" id="statHigh">-</div></div>
-            <div class="statBox"><div class="statLabel">D20 crits</div><div class="statValue" id="statCrits">0</div></div>
-            <div class="statBox"><div class="statLabel">D20 nat1</div><div class="statValue" id="statFails">0</div></div>
+      <div class="hero">
+        <h1>YoRHa Dice Interface</h1>
+        <p>Tactical Probability Engine • Terminal Display</p>
+      </div>
+
+      <div class="grid">
+        <div>
+          <div class="card">
+            <div class="section-kicker">Probability Engine</div>
+            <h3>Dice Tray</h3>
+
+            <div class="controls">
+              <div>
+                <label for="dieType">Die type</label>
+                <select id="dieType">
+                  <option value="4">D4</option>
+                  <option value="6">D6</option>
+                  <option value="8">D8</option>
+                  <option value="10">D10</option>
+                  <option value="12">D12</option>
+                  <option value="20" selected>D20</option>
+                  <option value="100">D100</option>
+                </select>
+              </div>
+
+              <div>
+                <label for="diceCount">Number of dice</label>
+                <input id="diceCount" type="number" min="1" max="12" value="1" />
+              </div>
+
+              <div>
+                <label>&nbsp;</label>
+                <button id="rollButton" type="button">Roll</button>
+              </div>
+            </div>
+
+            <div class="command">
+              <label for="diceCommand">Command input</label>
+              <input id="diceCommand" type="text" placeholder="Examples: 2d20+3, 4d6, 1d100" />
+            </div>
+
+            <div id="trayWrap">
+              <div class="tray-overlay">Display: Active</div>
+              <canvas id="tray"></canvas>
+            </div>
+
+            <div class="resultBox">
+              <div class="resultLabel">Result Output</div>
+              <div class="resultMain" id="resultMain">-</div>
+              <div class="resultSub" id="resultSub">Awaiting input.</div>
+              <div class="highlight" id="highlight"></div>
+            </div>
+
+            <div class="footerbar">
+              <span>Subsystem: Dice Interpreter</span>
+              <span>Operator Status: Ready</span>
+            </div>
           </div>
         </div>
 
-        <div class="card">
-          <div class="section-kicker">Archive</div>
-          <h3>Roll History</h3>
-          <div class="historyList" id="historyList"></div>
+        <div>
+          <div class="card">
+            <div class="section-kicker">Telemetry</div>
+            <h3>Statistics</h3>
+            <div class="statsGrid">
+              <div class="statBox"><div class="statLabel">Rolls</div><div class="statValue" id="statRolls">0</div></div>
+              <div class="statBox"><div class="statLabel">Dice rolled</div><div class="statValue" id="statDice">0</div></div>
+              <div class="statBox"><div class="statLabel">Average</div><div class="statValue" id="statAverage">-</div></div>
+              <div class="statBox"><div class="statLabel">Highest</div><div class="statValue" id="statHigh">-</div></div>
+              <div class="statBox"><div class="statLabel">D20 crits</div><div class="statValue" id="statCrits">0</div></div>
+              <div class="statBox"><div class="statLabel">D20 nat1</div><div class="statValue" id="statFails">0</div></div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="section-kicker">Archive</div>
+            <h3>Roll History</h3>
+            <div class="historyList" id="historyList"></div>
+          </div>
         </div>
       </div>
     </div>
@@ -536,6 +621,7 @@
     ];
 
     const bootText = document.getElementById('bootText');
+    const appShell = document.getElementById('appShell');
     const page = document.getElementById('page');
 
     const dieTypeEl = document.getElementById('dieType');
@@ -569,6 +655,7 @@
       } else {
         setTimeout(() => {
           document.getElementById('boot').style.display = 'none';
+          appShell.style.display = 'grid';
           page.style.display = 'block';
           resizeCanvas();
           drawTray();
@@ -815,7 +902,7 @@
       ctx.font = `bold ${Math.max(14, size * 0.3)}px Segoe UI`;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText(String(die.value), 0, 0);
+      ctx.fillText(String(die.displayValue), 0, 0);
 
       ctx.restore();
     }
@@ -844,12 +931,19 @@
       const h = canvas.clientHeight;
 
       let moving = false;
+      const now = performance.now();
 
       for (const die of diceSprites) {
         die.vy += 0.35;
         die.x += die.vx;
         die.y += die.vy;
         die.angle += die.spin;
+
+        if (now < die.cycleUntil) {
+          die.displayValue = Math.floor(Math.random() * die.sides) + 1;
+        } else {
+          die.displayValue = die.value;
+        }
 
         const half = die.size / 2;
 
@@ -874,12 +968,13 @@
           die.vy *= -0.78;
         }
 
-        if (Math.abs(die.vx) > 0.08 || Math.abs(die.vy) > 0.08 || Math.abs(die.spin) > 0.01) {
+        if (Math.abs(die.vx) > 0.08 || Math.abs(die.vy) > 0.08 || Math.abs(die.spin) > 0.01 || now < die.cycleUntil) {
           moving = true;
         } else {
           die.vx = 0;
           die.vy = 0;
           die.spin = 0;
+          die.displayValue = die.value;
         }
       }
 
@@ -910,6 +1005,7 @@
 
       const w = canvas.clientWidth;
       const shape = shapeForSides(sides);
+      const now = performance.now();
 
       diceSprites = rolls.map((value, index) => {
         const crit = sides === 20 && value === 20;
@@ -930,6 +1026,8 @@
 
         return {
           value,
+          displayValue: Math.floor(Math.random() * sides) + 1,
+          sides,
           shape,
           size: Math.max(38, Math.min(58, 66 - rolls.length * 2)),
           x: w * 0.5 + (index - (rolls.length - 1) / 2) * 18,
@@ -939,7 +1037,8 @@
           angle: Math.random() * Math.PI * 2,
           spin: (Math.random() - 0.5) * 0.28,
           fill,
-          stroke
+          stroke,
+          cycleUntil: now + 800 + Math.random() * 450
         };
       });
 
