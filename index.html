@@ -1,394 +1,860 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>YoRHa Dice Interface</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>YoRHa Dice Interface</title>
+  <style>
+    :root{
+      --panel: rgba(30,30,30,0.78);
+      --panel-2: rgba(55,55,55,0.78);
+      --line: rgba(200,200,200,0.35);
+      --text: #e8e8e8;
+      --muted: #b7b7b7;
+      --accent: #8e8e8e;
+      --crit: #8fd6d1;
+      --fail: #d47d7d;
+    }
 
-<style>
+    * { box-sizing: border-box; }
 
-:root{
---panel:rgba(40,40,40,0.85);
---panel-light:rgba(60,60,60,0.85);
---line:#777;
---text:#e5e5e5;
---accent:#aaa;
---crit:#7fd;
---fail:#ff6a6a;
-}
+    html, body {
+      margin: 0;
+      min-height: 100%;
+      background: #000;
+      color: var(--text);
+      font-family: "Segoe UI", Arial, sans-serif;
+      overflow-x: hidden;
+    }
 
-*{box-sizing:border-box}
+    body::before{
+      content:"";
+      position: fixed;
+      inset: 0;
+      z-index: -3;
+      background:
+        linear-gradient(rgba(0,0,0,.62), rgba(0,0,0,.82)),
+        url("yorha.png") center/cover no-repeat fixed;
+    }
 
-body{
-margin:0;
-font-family:Segoe UI,Arial;
-color:var(--text);
-background:black;
-overflow-x:hidden;
-}
+    body::after{
+      content:"";
+      position: fixed;
+      inset: 0;
+      z-index: -2;
+      pointer-events: none;
+      background:
+        repeating-linear-gradient(
+          to bottom,
+          rgba(255,255,255,.025),
+          rgba(255,255,255,.025) 1px,
+          transparent 1px,
+          transparent 3px
+        );
+      opacity: .22;
+    }
 
-/* background image */
+    #boot {
+      position: fixed;
+      inset: 0;
+      background: #000;
+      color: #ddd;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 20;
+      font-family: Consolas, monospace;
+      font-size: 18px;
+      padding: 24px;
+      text-align: center;
+    }
 
-body::before{
-content:"";
-position:fixed;
-inset:0;
-z-index:-2;
-background:
-linear-gradient(rgba(0,0,0,.7),rgba(0,0,0,.85)),
-url("yorha.png") center/cover no-repeat fixed;
-}
+    #bootText {
+      line-height: 1.8;
+      white-space: pre-line;
+    }
 
-/* scanlines */
+    .page {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 24px;
+      display: none;
+      gap: 18px;
+    }
 
-body::after{
-content:"";
-position:fixed;
-inset:0;
-z-index:-1;
-background:
-repeating-linear-gradient(
-to bottom,
-rgba(255,255,255,.03),
-rgba(255,255,255,.03) 1px,
-transparent 1px,
-transparent 3px);
-opacity:.25;
-}
+    .hero, .card {
+      position: relative;
+      background: var(--panel);
+      border: 2px solid var(--line);
+      backdrop-filter: blur(4px);
+      box-shadow: 0 12px 28px rgba(0,0,0,.25);
+    }
 
-/* boot screen */
+    .hero {
+      padding: 20px 24px;
+      margin-bottom: 18px;
+    }
 
-#boot{
-position:fixed;
-inset:0;
-background:black;
-color:white;
-display:flex;
-flex-direction:column;
-justify-content:center;
-align-items:center;
-font-family:monospace;
-font-size:18px;
-z-index:10;
-}
+    .hero::before, .card::before {
+      content: "";
+      position: absolute;
+      inset: 10px;
+      border: 1px solid rgba(255,255,255,0.09);
+      pointer-events: none;
+    }
 
-.page{
-max-width:900px;
-margin:auto;
-padding:30px;
-display:none;
-}
+    .hero h1 {
+      margin: 0;
+      letter-spacing: 4px;
+      font-weight: 600;
+      font-size: 32px;
+    }
 
-.hero{
-background:var(--panel);
-border:2px solid var(--line);
-padding:20px;
-margin-bottom:20px;
-}
+    .hero p {
+      margin: 8px 0 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
 
-.hero h1{
-margin:0;
-letter-spacing:3px;
-}
+    .grid {
+      display: grid;
+      grid-template-columns: 1.15fr 0.85fr;
+      gap: 18px;
+    }
 
-.card{
-background:var(--panel);
-border:2px solid var(--line);
-padding:20px;
-margin-bottom:20px;
-}
+    .card {
+      padding: 18px;
+      margin-bottom: 18px;
+    }
 
-/* controls */
+    h3 {
+      margin: 0 0 12px;
+      font-weight: 600;
+      letter-spacing: 1px;
+    }
 
-.controls{
-display:grid;
-grid-template-columns:1fr 1fr auto;
-gap:10px;
-margin-bottom:15px;
-}
+    .controls {
+      display: grid;
+      grid-template-columns: 1fr 1fr auto;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
 
-input,select,button{
-padding:10px;
-border:2px solid var(--line);
-background:var(--panel-light);
-color:white;
-font-size:14px;
-}
+    label {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 11px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
 
-button{
-cursor:pointer;
-background:#666;
-}
+    select, input, button {
+      width: 100%;
+      padding: 10px 12px;
+      border: 2px solid var(--line);
+      background: var(--panel-2);
+      color: var(--text);
+      font-size: 14px;
+    }
 
-button:hover{background:#888}
+    button {
+      cursor: pointer;
+      background: #676767;
+      font-weight: 600;
+    }
 
-/* command input */
+    button:hover {
+      filter: brightness(1.08);
+    }
 
-#diceCommand{
-width:100%;
-margin-top:10px;
-}
+    .command {
+      margin-top: 10px;
+    }
 
-/* result */
+    #trayWrap {
+      margin-top: 14px;
+      border: 2px solid var(--line);
+      background: rgba(10,10,10,0.46);
+      position: relative;
+      overflow: hidden;
+    }
 
-.result{
-font-size:56px;
-text-align:center;
-margin-top:20px;
-}
+    #trayWrap::before,
+    #trayWrap::after {
+      content:"";
+      position:absolute;
+      width:18px;
+      height:18px;
+      border:2px solid rgba(255,255,255,.2);
+      pointer-events:none;
+      z-index: 2;
+    }
 
-.highlight{
-text-align:center;
-margin-top:10px;
-font-weight:bold;
-}
+    #trayWrap::before{
+      top:8px; left:8px;
+      border-right:none; border-bottom:none;
+    }
 
-/* dice */
+    #trayWrap::after{
+      right:8px; bottom:8px;
+      border-left:none; border-top:none;
+    }
 
-.dice{
-display:flex;
-justify-content:center;
-gap:15px;
-margin-top:20px;
-flex-wrap:wrap;
-}
+    #tray {
+      width: 100%;
+      height: 360px;
+      display: block;
+    }
 
-.die{
-width:60px;
-height:60px;
-display:flex;
-align-items:center;
-justify-content:center;
-background:#222;
-border:2px solid #555;
-font-size:20px;
-animation:roll .7s ease;
-}
+    .resultBox {
+      margin-top: 14px;
+      border: 2px solid var(--line);
+      background: rgba(20,20,20,0.4);
+      padding: 14px;
+      text-align: center;
+      min-height: 120px;
+    }
 
-.crit{border-color:var(--crit)}
-.fail{border-color:var(--fail)}
+    .resultMain {
+      font-size: 52px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      margin-top: 8px;
+    }
 
-@keyframes roll{
-0%{transform:rotate(0)}
-50%{transform:rotate(180deg)}
-100%{transform:rotate(360deg)}
-}
+    .resultSub {
+      color: var(--muted);
+      font-size: 14px;
+      margin-top: 6px;
+      min-height: 20px;
+    }
 
-/* history */
+    .highlight {
+      margin-top: 8px;
+      font-weight: 700;
+      min-height: 20px;
+    }
 
-.history-item{
-display:flex;
-justify-content:space-between;
-border-bottom:1px solid #555;
-padding:6px 0;
-}
+    .highlight.crit { color: var(--crit); }
+    .highlight.fail { color: var(--fail); }
 
-/* mobile */
+    .historyList {
+      display: grid;
+      gap: 8px;
+      max-height: 500px;
+      overflow: auto;
+    }
 
-@media(max-width:700px){
+    .historyItem {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 10px;
+      align-items: center;
+      border: 2px solid var(--line);
+      background: rgba(30,30,30,0.46);
+      padding: 8px 10px;
+    }
 
-.controls{
-grid-template-columns:1fr;
-}
+    .historySub {
+      color: var(--muted);
+      font-size: 13px;
+      margin-top: 4px;
+    }
 
-.result{
-font-size:42px;
-}
+    .historyTotal {
+      font-size: 18px;
+      font-weight: 700;
+    }
 
-.page{
-padding:15px;
-}
+    .statsGrid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
 
-}
+    .statBox {
+      border: 2px solid var(--line);
+      background: rgba(30,30,30,0.46);
+      padding: 10px;
+    }
 
-</style>
+    .statLabel {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--muted);
+    }
+
+    .statValue {
+      margin-top: 4px;
+      font-size: 24px;
+      font-weight: 700;
+    }
+
+    .note {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.5;
+      margin-top: 10px;
+    }
+
+    @media (max-width: 900px) {
+      .grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 700px) {
+      .controls {
+        grid-template-columns: 1fr;
+      }
+
+      .statsGrid {
+        grid-template-columns: 1fr;
+      }
+
+      .page {
+        padding: 14px;
+      }
+
+      #tray {
+        height: 300px;
+      }
+
+      .resultMain {
+        font-size: 42px;
+      }
+    }
+  </style>
 </head>
-
 <body>
-
-<div id="boot">
-<div id="bootText"></div>
-</div>
-
-<div class="page">
-
-<div class="hero">
-<h1>YoRHa Dice Interface</h1>
-<p>Tactical Probability Engine</p>
-</div>
-
-<div class="card">
-
-<div class="controls">
-
-<select id="dieType">
-<option value="4">D4</option>
-<option value="6">D6</option>
-<option value="8">D8</option>
-<option value="10">D10</option>
-<option value="12">D12</option>
-<option value="20" selected>D20</option>
-<option value="100">D100</option>
-</select>
-
-<input id="diceCount" type="number" value="1" min="1">
-
-<button onclick="rollStandard()">ROLL</button>
-
-</div>
-
-<input id="diceCommand" placeholder="Command input (ex: 2d20+3)">
-
-<div id="result" class="result">-</div>
-<div id="highlight" class="highlight"></div>
-
-<div id="dice" class="dice"></div>
-
-</div>
-
-<div class="card">
-<h3>Roll History</h3>
-<div id="history"></div>
-</div>
-
-</div>
-
-<script>
-
-/* boot screen */
-
-const bootLines=[
-"YoRHa Tactical Support System",
-"Initializing probability engine...",
-"Loading dice subsystem...",
-"System ready."
-]
-
-const bootText=document.getElementById("bootText")
-
-let i=0
-
-function bootSequence(){
-if(i<bootLines.length){
-bootText.innerHTML+=bootLines[i]+"<br>"
-i++
-setTimeout(bootSequence,700)
-}
-else{
-setTimeout(()=>{
-document.getElementById("boot").style.display="none"
-document.querySelector(".page").style.display="block"
-},800)
-}
-}
-
-bootSequence()
-
-/* dice */
-
-function rollDie(s){
-return Math.floor(Math.random()*s)+1
-}
-
-function renderDice(rolls,sides){
-
-const container=document.getElementById("dice")
-container.innerHTML=""
-
-rolls.forEach(r=>{
-
-const d=document.createElement("div")
-d.className="die"
-
-if(sides===20 && r===20) d.classList.add("crit")
-if(sides===20 && r===1) d.classList.add("fail")
-
-d.textContent=r
-
-container.appendChild(d)
-
-})
-
-}
-
-function addHistory(label,total){
-
-const row=document.createElement("div")
-row.className="history-item"
-
-row.innerHTML=`<div>${label}</div><strong>${total}</strong>`
-
-document.getElementById("history").prepend(row)
-
-}
-
-/* normal roll */
-
-function rollStandard(){
-
-const sides=parseInt(dieType.value)
-const count=parseInt(diceCount.value)
-
-const rolls=[]
-
-for(let i=0;i<count;i++){
-rolls.push(rollDie(sides))
-}
-
-const total=rolls.reduce((a,b)=>a+b,0)
-
-renderDice(rolls,sides)
-
-result.textContent=total
-highlight.textContent=""
-
-if(sides===20 && rolls.includes(20)){
-highlight.textContent="CRITICAL"
-}
-
-if(sides===20 && rolls.includes(1)){
-highlight.textContent="FAILURE"
-}
-
-addHistory(count+"d"+sides,total)
-
-}
-
-/* command roll */
-
-diceCommand.addEventListener("keydown",e=>{
-
-if(e.key!=="Enter") return
-
-const cmd=diceCommand.value.toLowerCase()
-
-const match=cmd.match(/(\\d*)d(\\d+)([+\\-]\\d+)?/)
-
-if(!match) return
-
-const count=parseInt(match[1]||1)
-const sides=parseInt(match[2])
-const mod=parseInt(match[3]||0)
-
-const rolls=[]
-
-for(let i=0;i<count;i++){
-rolls.push(rollDie(sides))
-}
-
-const total=rolls.reduce((a,b)=>a+b,0)+mod
-
-renderDice(rolls,sides)
-
-result.textContent=total
-
-addHistory(cmd,total)
-
-diceCommand.value=""
-
-})
-
-</script>
-
+  <div id="boot"><div id="bootText"></div></div>
+
+  <div class="page" id="page">
+    <div class="hero">
+      <h1>YoRHa Dice Interface</h1>
+      <p>Tactical Probability Engine • Physics Tray Edition</p>
+    </div>
+
+    <div class="grid">
+      <div>
+        <div class="card">
+          <h3>Dice Tray</h3>
+
+          <div class="controls">
+            <div>
+              <label for="dieType">Die type</label>
+              <select id="dieType">
+                <option value="4">D4</option>
+                <option value="6">D6</option>
+                <option value="8">D8</option>
+                <option value="10">D10</option>
+                <option value="12">D12</option>
+                <option value="20" selected>D20</option>
+                <option value="100">D100</option>
+              </select>
+            </div>
+
+            <div>
+              <label for="diceCount">Number of dice</label>
+              <input id="diceCount" type="number" min="1" max="12" value="1" />
+            </div>
+
+            <div>
+              <label>&nbsp;</label>
+              <button id="rollButton" type="button">ROLL</button>
+            </div>
+          </div>
+
+          <div class="command">
+            <label for="diceCommand">Command input</label>
+            <input id="diceCommand" type="text" placeholder="Examples: 2d20+3, 4d6, 1d100" />
+          </div>
+
+          <div id="trayWrap">
+            <canvas id="tray"></canvas>
+          </div>
+
+          <div class="resultBox">
+            <div class="resultMain" id="resultMain">-</div>
+            <div class="resultSub" id="resultSub">Awaiting input.</div>
+            <div class="highlight" id="highlight"></div>
+          </div>
+
+          <div class="note">
+            The tray uses 3D cube visuals for all dice types, but the roll results are mathematically correct for the selected die.
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="card">
+          <h3>Statistics</h3>
+          <div class="statsGrid">
+            <div class="statBox"><div class="statLabel">Rolls</div><div class="statValue" id="statRolls">0</div></div>
+            <div class="statBox"><div class="statLabel">Dice rolled</div><div class="statValue" id="statDice">0</div></div>
+            <div class="statBox"><div class="statLabel">Average</div><div class="statValue" id="statAverage">-</div></div>
+            <div class="statBox"><div class="statLabel">Highest</div><div class="statValue" id="statHigh">-</div></div>
+            <div class="statBox"><div class="statLabel">D20 crits</div><div class="statValue" id="statCrits">0</div></div>
+            <div class="statBox"><div class="statLabel">D20 nat1</div><div class="statValue" id="statFails">0</div></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>Roll History</h3>
+          <div class="historyList" id="historyList"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import * as THREE from 'https://unpkg.com/three@0.160.0/build/three.module.js';
+    import { OrbitControls } from 'https://unpkg.com/three@0.160.0/examples/jsm/controls/OrbitControls.js';
+    import * as CANNON from 'https://cdn.skypack.dev/cannon-es';
+
+    const state = {
+      history: [],
+      stats: {
+        totalRollActions: 0,
+        totalDiceRolled: 0,
+        sumOfAllDice: 0,
+        highestSingleDie: null,
+        d20Crits: 0,
+        d20Fails: 0
+      }
+    };
+
+    const bootLines = [
+      'YoRHa Tactical Support System',
+      'Initializing probability engine...',
+      'Loading physics tray...',
+      'System ready.'
+    ];
+
+    const bootText = document.getElementById('bootText');
+    const page = document.getElementById('page');
+
+    const dieTypeEl = document.getElementById('dieType');
+    const diceCountEl = document.getElementById('diceCount');
+    const rollButtonEl = document.getElementById('rollButton');
+    const diceCommandEl = document.getElementById('diceCommand');
+
+    const resultMainEl = document.getElementById('resultMain');
+    const resultSubEl = document.getElementById('resultSub');
+    const highlightEl = document.getElementById('highlight');
+
+    const historyListEl = document.getElementById('historyList');
+
+    const statRollsEl = document.getElementById('statRolls');
+    const statDiceEl = document.getElementById('statDice');
+    const statAverageEl = document.getElementById('statAverage');
+    const statHighEl = document.getElementById('statHigh');
+    const statCritsEl = document.getElementById('statCrits');
+    const statFailsEl = document.getElementById('statFails');
+
+    function bootSequence(i = 0) {
+      if (i < bootLines.length) {
+        bootText.textContent += bootLines[i] + '\n';
+        setTimeout(() => bootSequence(i + 1), 650);
+      } else {
+        setTimeout(() => {
+          document.getElementById('boot').style.display = 'none';
+          page.style.display = 'block';
+          resizeRenderer();
+          animate();
+        }, 700);
+      }
+    }
+
+    function randomDie(sides) {
+      return Math.floor(Math.random() * sides) + 1;
+    }
+
+    function parseDiceCommand(input) {
+      const match = input.trim().toLowerCase().match(/^(\d*)d(\d+)([+-]\d+)?$/);
+      if (!match) return null;
+      return {
+        count: Math.max(1, Math.min(12, parseInt(match[1] || '1', 10))),
+        sides: parseInt(match[2], 10),
+        modifier: parseInt(match[3] || '0', 10)
+      };
+    }
+
+    function renderHistory() {
+      historyListEl.innerHTML = '';
+      if (state.history.length === 0) {
+        const row = document.createElement('div');
+        row.className = 'historyItem';
+        row.innerHTML = '<div><strong>No rolls yet</strong><div class="historySub">Awaiting tactical input.</div></div><div class="historyTotal">-</div>';
+        historyListEl.appendChild(row);
+        return;
+      }
+
+      for (const item of state.history) {
+        const row = document.createElement('div');
+        row.className = 'historyItem';
+
+        let suffix = '';
+        if (item.critCount > 0) suffix += ' • Crit x' + item.critCount;
+        if (item.failCount > 0) suffix += ' • Nat1 x' + item.failCount;
+        if (item.modifier) suffix += ' • Mod ' + (item.modifier > 0 ? '+' : '') + item.modifier;
+
+        row.innerHTML = `
+          <div>
+            <strong>${item.label}</strong>
+            <div class="historySub">${item.rolls.join(', ')}${suffix}</div>
+          </div>
+          <div class="historyTotal">${item.total}</div>
+        `;
+        historyListEl.appendChild(row);
+      }
+    }
+
+    function renderStats() {
+      statRollsEl.textContent = state.stats.totalRollActions;
+      statDiceEl.textContent = state.stats.totalDiceRolled;
+      statAverageEl.textContent = state.stats.totalDiceRolled
+        ? (state.stats.sumOfAllDice / state.stats.totalDiceRolled).toFixed(2)
+        : '-';
+      statHighEl.textContent = state.stats.highestSingleDie ?? '-';
+      statCritsEl.textContent = state.stats.d20Crits;
+      statFailsEl.textContent = state.stats.d20Fails;
+    }
+
+    function updateResult(entry) {
+      resultMainEl.textContent = entry.total;
+      resultSubEl.textContent =
+        entry.rolls.join(' + ') +
+        (entry.modifier ? ` ${entry.modifier > 0 ? '+' : '-'} ${Math.abs(entry.modifier)}` : '') +
+        ` = ${entry.total}`;
+
+      highlightEl.textContent = '';
+      highlightEl.className = 'highlight';
+
+      if (entry.sides === 20 && entry.critCount > 0) {
+        highlightEl.textContent = entry.critCount > 1 ? `CRITICAL x${entry.critCount}` : 'CRITICAL';
+        highlightEl.classList.add('crit');
+      } else if (entry.sides === 20 && entry.failCount > 0) {
+        highlightEl.textContent = entry.failCount > 1 ? `FAILURE x${entry.failCount}` : 'FAILURE';
+        highlightEl.classList.add('fail');
+      }
+    }
+
+    function recordRoll({ label, sides, rolls, modifier = 0 }) {
+      const total = rolls.reduce((a, b) => a + b, 0) + modifier;
+      const critCount = sides === 20 ? rolls.filter(v => v === 20).length : 0;
+      const failCount = sides === 20 ? rolls.filter(v => v === 1).length : 0;
+
+      state.stats.totalRollActions += 1;
+      state.stats.totalDiceRolled += rolls.length;
+      state.stats.sumOfAllDice += rolls.reduce((a, b) => a + b, 0);
+      state.stats.highestSingleDie = Math.max(state.stats.highestSingleDie || 0, ...rolls);
+      state.stats.d20Crits += critCount;
+      state.stats.d20Fails += failCount;
+
+      const entry = { label, sides, rolls, total, modifier, critCount, failCount };
+      state.history.unshift(entry);
+      if (state.history.length > 15) state.history.pop();
+
+      updateResult(entry);
+      renderStats();
+      renderHistory();
+    }
+
+    // ----------------------------
+    // Audio
+    // ----------------------------
+    let audioCtx = null;
+
+    function getAudio() {
+      if (!audioCtx) {
+        const Ctx = window.AudioContext || window.webkitAudioContext;
+        if (Ctx) audioCtx = new Ctx();
+      }
+      return audioCtx;
+    }
+
+    function tone(freq, duration, type = 'sine', gainValue = 0.02, delay = 0) {
+      const ctx = getAudio();
+      if (!ctx) return;
+
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+
+      osc.type = type;
+      osc.frequency.setValueAtTime(freq, ctx.currentTime + delay);
+      gain.gain.setValueAtTime(0.0001, ctx.currentTime + delay);
+      gain.gain.linearRampToValueAtTime(gainValue, ctx.currentTime + delay + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + delay + duration);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(ctx.currentTime + delay);
+      osc.stop(ctx.currentTime + delay + duration + 0.02);
+    }
+
+    function playRollSound() {
+      tone(180, 0.05, 'triangle', 0.018, 0);
+      tone(240, 0.05, 'triangle', 0.018, 0.04);
+      tone(320, 0.06, 'triangle', 0.015, 0.08);
+    }
+
+    function playCritSound() {
+      tone(700, 0.08, 'sine', 0.022, 0);
+      tone(900, 0.09, 'sine', 0.022, 0.05);
+      tone(1200, 0.12, 'sine', 0.018, 0.1);
+    }
+
+    function playFailSound() {
+      tone(200, 0.08, 'sawtooth', 0.018, 0);
+      tone(150, 0.14, 'sawtooth', 0.018, 0.06);
+    }
+
+    rollButtonEl.addEventListener('mouseenter', () => tone(520, 0.03, 'square', 0.01, 0));
+
+    // ----------------------------
+    // Three.js + Cannon
+    // ----------------------------
+    const canvas = document.getElementById('tray');
+    const scene = new THREE.Scene();
+
+    const camera = new THREE.PerspectiveCamera(50, 1, 0.1, 100);
+    camera.position.set(0, 10, 12);
+
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+    const controls = new OrbitControls(camera, canvas);
+    controls.enablePan = false;
+    controls.enableZoom = false;
+    controls.target.set(0, 0, 0);
+    controls.update();
+
+    const ambient = new THREE.AmbientLight(0xffffff, 0.7);
+    scene.add(ambient);
+
+    const dirLight = new THREE.DirectionalLight(0xffffff, 1.1);
+    dirLight.position.set(6, 12, 8);
+    dirLight.castShadow = true;
+    dirLight.shadow.mapSize.set(1024, 1024);
+    scene.add(dirLight);
+
+    const floorGeo = new THREE.PlaneGeometry(18, 18);
+    const floorMat = new THREE.MeshStandardMaterial({
+      color: 0x222222,
+      transparent: true,
+      opacity: 0.72,
+      roughness: 0.9,
+      metalness: 0.08
+    });
+    const floorMesh = new THREE.Mesh(floorGeo, floorMat);
+    floorMesh.rotation.x = -Math.PI / 2;
+    floorMesh.receiveShadow = true;
+    scene.add(floorMesh);
+
+    const world = new CANNON.World({
+      gravity: new CANNON.Vec3(0, -22, 0)
+    });
+    world.allowSleep = true;
+
+    const floorBody = new CANNON.Body({
+      type: CANNON.Body.STATIC,
+      shape: new CANNON.Plane()
+    });
+    floorBody.quaternion.setFromEuler(-Math.PI / 2, 0, 0);
+    world.addBody(floorBody);
+
+    const wallMaterial = new CANNON.Material('wall');
+    const diceMaterial = new CANNON.Material('dice');
+    const contactMaterial = new CANNON.ContactMaterial(diceMaterial, wallMaterial, {
+      restitution: 0.45,
+      friction: 0.25
+    });
+    world.addContactMaterial(contactMaterial);
+
+    function addWall(x, y, z, sx, sy, sz) {
+      const body = new CANNON.Body({
+        type: CANNON.Body.STATIC,
+        material: wallMaterial,
+        shape: new CANNON.Box(new CANNON.Vec3(sx / 2, sy / 2, sz / 2)),
+        position: new CANNON.Vec3(x, y, z)
+      });
+      world.addBody(body);
+    }
+
+    addWall(0, 1, -8.5, 18, 2, 1);
+    addWall(0, 1, 8.5, 18, 2, 1);
+    addWall(-8.5, 1, 0, 1, 2, 18);
+    addWall(8.5, 1, 0, 1, 2, 18);
+
+    const diceObjects = [];
+
+    function makeDieTexture(label) {
+      const size = 256;
+      const c = document.createElement('canvas');
+      c.width = size;
+      c.height = size;
+      const ctx = c.getContext('2d');
+
+      ctx.fillStyle = '#e5e1d5';
+      ctx.fillRect(0, 0, size, size);
+
+      ctx.strokeStyle = '#6a6a6a';
+      ctx.lineWidth = 10;
+      ctx.strokeRect(8, 8, size - 16, size - 16);
+
+      ctx.fillStyle = '#1c1c1c';
+      ctx.font = 'bold 112px Segoe UI, Arial';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(label, size / 2, size / 2);
+
+      const tex = new THREE.CanvasTexture(c);
+      tex.needsUpdate = true;
+      return tex;
+    }
+
+    function createDieMesh(value, sides, size = 1.1) {
+      const geometry = new THREE.BoxGeometry(size, size, size);
+      const materials = [
+        new THREE.MeshStandardMaterial({ map: makeDieTexture('D' + sides) }),
+        new THREE.MeshStandardMaterial({ map: makeDieTexture('D' + sides) }),
+        new THREE.MeshStandardMaterial({ map: makeDieTexture('D' + sides) }),
+        new THREE.MeshStandardMaterial({ map: makeDieTexture('D' + sides) }),
+        new THREE.MeshStandardMaterial({ map: makeDieTexture('D' + sides) }),
+        new THREE.MeshStandardMaterial({ map: makeDieTexture(String(value)) })
+      ];
+      const mesh = new THREE.Mesh(geometry, materials);
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      return mesh;
+    }
+
+    function createDieBody(size = 1.1) {
+      return new CANNON.Body({
+        mass: 1,
+        material: diceMaterial,
+        shape: new CANNON.Box(new CANNON.Vec3(size / 2, size / 2, size / 2)),
+        linearDamping: 0.18,
+        angularDamping: 0.18
+      });
+    }
+
+    function clearDice() {
+      while (diceObjects.length) {
+        const obj = diceObjects.pop();
+        scene.remove(obj.mesh);
+        world.removeBody(obj.body);
+      }
+    }
+
+    function throwDice(rolls, sides) {
+      clearDice();
+
+      rolls.forEach((value, index) => {
+        const mesh = createDieMesh(value, sides);
+        const body = createDieBody();
+
+        const spread = (index - (rolls.length - 1) / 2) * 1.2;
+        body.position.set(spread, 6 + Math.random() * 2, (Math.random() - 0.5) * 2);
+        body.velocity.set((Math.random() - 0.5) * 6, 0, (Math.random() - 0.5) * 6);
+        body.angularVelocity.set(
+          (Math.random() - 0.5) * 16,
+          (Math.random() - 0.5) * 16,
+          (Math.random() - 0.5) * 16
+        );
+
+        mesh.position.copy(body.position);
+        mesh.quaternion.copy(body.quaternion);
+
+        scene.add(mesh);
+        world.addBody(body);
+        diceObjects.push({ mesh, body });
+      });
+    }
+
+    function resizeRenderer() {
+      const rect = canvas.getBoundingClientRect();
+      const width = Math.max(300, Math.floor(rect.width));
+      const height = Math.max(240, Math.floor(rect.height));
+
+      renderer.setSize(width, height, false);
+      camera.aspect = width / height;
+      camera.updateProjectionMatrix();
+    }
+
+    window.addEventListener('resize', resizeRenderer);
+
+    function animate() {
+      requestAnimationFrame(animate);
+      world.step(1 / 60);
+
+      for (const obj of diceObjects) {
+        obj.mesh.position.copy(obj.body.position);
+        obj.mesh.quaternion.copy(obj.body.quaternion);
+      }
+
+      controls.update();
+      renderer.render(scene, camera);
+    }
+
+    // ----------------------------
+    // Rolling logic
+    // ----------------------------
+    function runRoll(count, sides, modifier = 0, labelOverride = null) {
+      const rolls = Array.from({ length: count }, () => randomDie(sides));
+
+      const ctx = getAudio();
+      if (ctx && ctx.state === 'suspended') ctx.resume();
+
+      playRollSound();
+      throwDice(rolls, sides);
+
+      recordRoll({
+        label: labelOverride || `${count}d${sides}${modifier ? (modifier > 0 ? '+' : '') + modifier : ''}`,
+        sides,
+        rolls,
+        modifier
+      });
+
+      const critCount = sides === 20 ? rolls.filter(v => v === 20).length : 0;
+      const failCount = sides === 20 ? rolls.filter(v => v === 1).length : 0;
+
+      if (critCount > 0) {
+        playCritSound();
+      } else if (failCount > 0) {
+        playFailSound();
+      }
+    }
+
+    rollButtonEl.addEventListener('click', () => {
+      const count = Math.max(1, Math.min(12, parseInt(diceCountEl.value || '1', 10)));
+      const sides = parseInt(dieTypeEl.value, 10);
+      diceCountEl.value = count;
+      runRoll(count, sides, 0);
+    });
+
+    diceCommandEl.addEventListener('keydown', (e) => {
+      if (e.key !== 'Enter') return;
+      const parsed = parseDiceCommand(diceCommandEl.value);
+      if (!parsed) {
+        resultMainEl.textContent = 'ERR';
+        resultSubEl.textContent = 'Invalid command. Try 2d20+3';
+        highlightEl.textContent = '';
+        return;
+      }
+
+      runRoll(parsed.count, parsed.sides, parsed.modifier, diceCommandEl.value.trim().toLowerCase());
+      diceCommandEl.value = '';
+    });
+
+    renderHistory();
+    renderStats();
+    bootSequence();
+  </script>
 </body>
 </html>
