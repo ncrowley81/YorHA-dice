@@ -29,6 +29,7 @@
       color: var(--text);
       font-family: "Segoe UI", Arial, sans-serif;
       overflow-x: hidden;
+      scroll-behavior: smooth;
     }
 
     body::before{
@@ -103,7 +104,7 @@
       gap: 14px;
     }
 
-    .railMark{
+    .railBrand{
       width: 100%;
       text-align: center;
       font-size: 10px;
@@ -120,7 +121,32 @@
       width: 26px;
       height: 1px;
       background: var(--line);
-      margin: 4px 0;
+      margin: 2px 0;
+    }
+
+    .railNav{
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .railItem{
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      text-decoration: none;
+      color: var(--muted);
+      transition: color .18s ease, opacity .18s ease;
+      opacity: .78;
+    }
+
+    .railItem:hover{
+      color: var(--text);
+      opacity: 1;
     }
 
     .railDot{
@@ -128,11 +154,27 @@
       height: 12px;
       border: 1px solid var(--line-strong);
       background: rgba(255,255,255,.08);
+      transition: background .18s ease, box-shadow .18s ease, transform .18s ease;
     }
 
-    .railDot.active{
+    .railLabel{
+      font-size: 9px;
+      letter-spacing: .18em;
+      text-transform: uppercase;
+      writing-mode: vertical-rl;
+      transform: rotate(180deg);
+      text-align: center;
+    }
+
+    .railItem.active{
+      color: var(--accent);
+      opacity: 1;
+    }
+
+    .railItem.active .railDot{
       background: var(--accent);
       box-shadow: 0 0 12px rgba(216,210,196,.22);
+      transform: scale(1.08);
     }
 
     .page {
@@ -216,6 +258,7 @@
     .card {
       padding: 18px;
       margin-bottom: 16px;
+      scroll-margin-top: 24px;
     }
 
     .section-kicker{
@@ -453,10 +496,25 @@
         padding:10px 12px;
       }
 
-      .railMark{
+      .railBrand{
         writing-mode:horizontal-tb;
         transform:none;
         padding-top:0;
+      }
+
+      .railNav{
+        flex-direction: row;
+        justify-content: center;
+      }
+
+      .railItem{
+        width: auto;
+        flex-direction: row;
+      }
+
+      .railLabel{
+        writing-mode:horizontal-tb;
+        transform:none;
       }
     }
 
@@ -494,13 +552,26 @@
 
   <div class="appShell" id="appShell">
     <aside class="navRail">
-      <div class="railMark">YoRHa</div>
+      <div class="railBrand">YoRHa</div>
       <div class="railDivider"></div>
-      <div class="railDot active"></div>
-      <div class="railDot"></div>
-      <div class="railDot"></div>
+
+      <nav class="railNav">
+        <a class="railItem active" href="#engineSection" data-target="engineSection">
+          <div class="railDot"></div>
+          <div class="railLabel">Engine</div>
+        </a>
+        <a class="railItem" href="#telemetrySection" data-target="telemetrySection">
+          <div class="railDot"></div>
+          <div class="railLabel">Telemetry</div>
+        </a>
+        <a class="railItem" href="#archiveSection" data-target="archiveSection">
+          <div class="railDot"></div>
+          <div class="railLabel">Archive</div>
+        </a>
+      </nav>
+
       <div class="railDivider"></div>
-      <div class="railMark">Pod</div>
+      <div class="railBrand">Pod</div>
     </aside>
 
     <div class="page" id="page">
@@ -522,7 +593,7 @@
 
       <div class="grid">
         <div>
-          <div class="card">
+          <div class="card" id="engineSection">
             <div class="section-kicker">Probability Engine</div>
             <h3>Dice Tray</h3>
 
@@ -576,7 +647,7 @@
         </div>
 
         <div>
-          <div class="card">
+          <div class="card" id="telemetrySection">
             <div class="section-kicker">Telemetry</div>
             <h3>Statistics</h3>
             <div class="statsGrid">
@@ -589,7 +660,7 @@
             </div>
           </div>
 
-          <div class="card">
+          <div class="card" id="archiveSection">
             <div class="section-kicker">Archive</div>
             <h3>Roll History</h3>
             <div class="historyList" id="historyList"></div>
@@ -642,6 +713,7 @@
     const statCritsEl = document.getElementById('statCrits');
     const statFailsEl = document.getElementById('statFails');
     const clockTextEl = document.getElementById('clockText');
+    const railItems = [...document.querySelectorAll('.railItem')];
 
     function updateClock() {
       const now = new Date();
@@ -661,8 +733,30 @@
           drawTray();
           updateClock();
           setInterval(updateClock, 1000);
+          updateRailActive();
+          window.addEventListener('scroll', updateRailActive, { passive: true });
         }, 650);
       }
+    }
+
+    function updateRailActive() {
+      const targets = railItems.map(item => ({
+        item,
+        el: document.getElementById(item.dataset.target)
+      }));
+
+      let best = targets[0];
+
+      for (const entry of targets) {
+        const rect = entry.el.getBoundingClientRect();
+        const distance = Math.abs(rect.top - 140);
+        if (!best || distance < best.distance) {
+          best = { ...entry, distance };
+        }
+      }
+
+      railItems.forEach(item => item.classList.remove('active'));
+      if (best && best.item) best.item.classList.add('active');
     }
 
     function randomDie(sides) {
@@ -929,7 +1023,6 @@
     function stepDice() {
       const w = canvas.clientWidth;
       const h = canvas.clientHeight;
-
       let moving = false;
       const now = performance.now();
 
@@ -1096,6 +1189,7 @@
     window.addEventListener('resize', () => {
       resizeCanvas();
       drawTray();
+      updateRailActive();
     });
 
     renderHistory();
