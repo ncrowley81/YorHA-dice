@@ -292,13 +292,6 @@
       font-weight: 700;
     }
 
-    .note {
-      color: var(--muted);
-      font-size: 12px;
-      line-height: 1.5;
-      margin-top: 10px;
-    }
-
     @media (max-width: 900px) {
       .grid {
         grid-template-columns: 1fr;
@@ -380,10 +373,6 @@
             <div class="resultMain" id="resultMain">-</div>
             <div class="resultSub" id="resultSub">Awaiting input.</div>
             <div class="highlight" id="highlight"></div>
-          </div>
-
-          <div class="note">
-            This version uses a built-in canvas dice tray instead of external 3D libraries, so it is much more reliable on GitHub Pages.
           </div>
         </div>
       </div>
@@ -626,30 +615,88 @@
 
       const size = die.size;
       const half = size / 2;
+      const depth = Math.max(8, size * 0.16);
 
-      ctx.fillStyle = die.fill;
-      ctx.strokeStyle = die.stroke;
-      ctx.lineWidth = 2;
+      ctx.shadowColor = 'rgba(0,0,0,0.35)';
+      ctx.shadowBlur = 12;
+      ctx.shadowOffsetX = 4;
+      ctx.shadowOffsetY = 6;
 
       if (die.shape === 'square') {
+        ctx.beginPath();
+        ctx.moveTo(half, -half);
+        ctx.lineTo(half + depth, -half - depth * 0.6);
+        ctx.lineTo(half + depth, half - depth * 0.6);
+        ctx.lineTo(half, half);
+        ctx.closePath();
+        ctx.fillStyle = die.sideFill;
+        ctx.fill();
+        ctx.strokeStyle = die.stroke;
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.moveTo(-half, -half);
+        ctx.lineTo(half, -half);
+        ctx.lineTo(half + depth, -half - depth * 0.6);
+        ctx.lineTo(-half + depth, -half - depth * 0.6);
+        ctx.closePath();
+        ctx.fillStyle = die.topFill;
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.fillStyle = die.fill;
         ctx.fillRect(-half, -half, size, size);
         ctx.strokeRect(-half, -half, size, size);
       } else {
         const sidesMap = { triangle: 3, diamond: 4, pentagon: 5, hexagon: 6, octagon: 8 };
         const pts = sidesMap[die.shape] || 6;
-        ctx.beginPath();
+        const points = [];
+
         for (let i = 0; i < pts; i++) {
           const a = (-Math.PI / 2) + (i * Math.PI * 2 / pts);
-          const px = Math.cos(a) * half;
-          const py = Math.sin(a) * half;
-          if (i === 0) ctx.moveTo(px, py);
-          else ctx.lineTo(px, py);
+          points.push({
+            x: Math.cos(a) * half,
+            y: Math.sin(a) * half
+          });
         }
+
+        const backPoints = points.map(p => ({
+          x: p.x + depth,
+          y: p.y - depth * 0.6
+        }));
+
+        for (let i = 0; i < points.length; i++) {
+          const next = (i + 1) % points.length;
+          if (points[i].y < 0 && points[next].y < 0) continue;
+
+          ctx.beginPath();
+          ctx.moveTo(points[i].x, points[i].y);
+          ctx.lineTo(points[next].x, points[next].y);
+          ctx.lineTo(backPoints[next].x, backPoints[next].y);
+          ctx.lineTo(backPoints[i].x, backPoints[i].y);
+          ctx.closePath();
+          ctx.fillStyle = die.sideFill;
+          ctx.fill();
+          ctx.strokeStyle = die.stroke;
+          ctx.lineWidth = 2;
+          ctx.stroke();
+        }
+
+        ctx.beginPath();
+        points.forEach((p, i) => {
+          if (i === 0) ctx.moveTo(p.x, p.y);
+          else ctx.lineTo(p.x, p.y);
+        });
         ctx.closePath();
+        ctx.fillStyle = die.fill;
         ctx.fill();
+        ctx.strokeStyle = die.stroke;
+        ctx.lineWidth = 2;
         ctx.stroke();
       }
 
+      ctx.shadowColor = 'transparent';
       ctx.fillStyle = '#1c1c1c';
       ctx.font = `bold ${Math.max(14, size * 0.32)}px Segoe UI`;
       ctx.textAlign = 'center';
@@ -662,7 +709,6 @@
     function drawTray() {
       const w = canvas.clientWidth;
       const h = canvas.clientHeight;
-
       ctx.clearRect(0, 0, w, h);
 
       for (const die of diceSprites) {
@@ -747,6 +793,25 @@
         const crit = sides === 20 && value === 20;
         const fail = sides === 20 && value === 1;
 
+        let fill = '#e5e1d5';
+        let topFill = '#f3efe4';
+        let sideFill = '#bdb8ab';
+        let stroke = '#6a6a6a';
+
+        if (crit) {
+          fill = '#d7f3f0';
+          topFill = '#edfdfb';
+          sideFill = '#9fcfca';
+          stroke = '#8fd6d1';
+        }
+
+        if (fail) {
+          fill = '#f2d6d6';
+          topFill = '#fae7e7';
+          sideFill = '#c79f9f';
+          stroke = '#d47d7d';
+        }
+
         return {
           value,
           shape,
@@ -757,8 +822,10 @@
           vy: Math.random() * 2,
           angle: Math.random() * Math.PI * 2,
           spin: (Math.random() - 0.5) * 0.35,
-          fill: crit ? '#d7f3f0' : fail ? '#f2d6d6' : '#e5e1d5',
-          stroke: crit ? '#8fd6d1' : fail ? '#d47d7d' : '#6a6a6a'
+          fill,
+          topFill,
+          sideFill,
+          stroke
         };
       });
 
