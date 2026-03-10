@@ -203,7 +203,7 @@
 
     #tray {
       width: 100%;
-      height: 360px;
+      height: 380px;
       display: block;
     }
 
@@ -334,7 +334,7 @@
   <div class="page" id="page">
     <div class="hero">
       <h1>YoRHa Dice Interface</h1>
-      <p>Tactical Probability Engine • Physics Tray Edition</p>
+      <p>Tactical Probability Engine • True Polyhedra Edition</p>
     </div>
 
     <div class="grid">
@@ -358,7 +358,7 @@
 
             <div>
               <label for="diceCount">Number of dice</label>
-              <input id="diceCount" type="number" min="1" max="12" value="1" />
+              <input id="diceCount" type="number" min="1" max="10" value="1" />
             </div>
 
             <div>
@@ -383,7 +383,7 @@
           </div>
 
           <div class="note">
-            The tray uses 3D cube visuals for all dice types, but the roll results are mathematically correct for the selected die.
+            D4, D6, D8, D12, and D20 use true polyhedral meshes. D10 and D100 still use simplified tray visuals, but their roll results are correct.
           </div>
         </div>
       </div>
@@ -429,7 +429,7 @@
     const bootLines = [
       'YoRHa Tactical Support System',
       'Initializing probability engine...',
-      'Loading physics tray...',
+      'Loading polyhedral dice meshes...',
       'System ready.'
     ];
 
@@ -476,7 +476,7 @@
       const match = input.trim().toLowerCase().match(/^(\d*)d(\d+)([+-]\d+)?$/);
       if (!match) return null;
       return {
-        count: Math.max(1, Math.min(12, parseInt(match[1] || '1', 10))),
+        count: Math.max(1, Math.min(10, parseInt(match[1] || '1', 10))),
         sides: parseInt(match[2], 10),
         modifier: parseInt(match[3] || '0', 10)
       };
@@ -563,9 +563,6 @@
       renderHistory();
     }
 
-    // ----------------------------
-    // Audio
-    // ----------------------------
     let audioCtx = null;
 
     function getAudio() {
@@ -614,14 +611,11 @@
 
     rollButtonEl.addEventListener('mouseenter', () => tone(520, 0.03, 'square', 0.01, 0));
 
-    // ----------------------------
-    // Three.js + Cannon
-    // ----------------------------
     const canvas = document.getElementById('tray');
     const scene = new THREE.Scene();
 
     const camera = new THREE.PerspectiveCamera(50, 1, 0.1, 100);
-    camera.position.set(0, 10, 12);
+    camera.position.set(0, 9, 12);
 
     const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -634,8 +628,7 @@
     controls.target.set(0, 0, 0);
     controls.update();
 
-    const ambient = new THREE.AmbientLight(0xffffff, 0.7);
-    scene.add(ambient);
+    scene.add(new THREE.AmbientLight(0xffffff, 0.7));
 
     const dirLight = new THREE.DirectionalLight(0xffffff, 1.1);
     dirLight.position.set(6, 12, 8);
@@ -693,7 +686,7 @@
 
     const diceObjects = [];
 
-    function makeDieTexture(label) {
+    function makeFaceCanvas(label) {
       const size = 256;
       const c = document.createElement('canvas');
       c.width = size;
@@ -713,32 +706,139 @@
       ctx.textBaseline = 'middle';
       ctx.fillText(label, size / 2, size / 2);
 
-      const tex = new THREE.CanvasTexture(c);
-      tex.needsUpdate = true;
-      return tex;
+      return new THREE.CanvasTexture(c);
     }
 
-    function createDieMesh(value, sides, size = 1.1) {
-      const geometry = new THREE.BoxGeometry(size, size, size);
-      const materials = [
-        new THREE.MeshStandardMaterial({ map: makeDieTexture('D' + sides) }),
-        new THREE.MeshStandardMaterial({ map: makeDieTexture('D' + sides) }),
-        new THREE.MeshStandardMaterial({ map: makeDieTexture('D' + sides) }),
-        new THREE.MeshStandardMaterial({ map: makeDieTexture('D' + sides) }),
-        new THREE.MeshStandardMaterial({ map: makeDieTexture('D' + sides) }),
-        new THREE.MeshStandardMaterial({ map: makeDieTexture(String(value)) })
+    function makeFaceMaterials(value, sides) {
+      const sideLabel = 'D' + sides;
+      return [
+        new THREE.MeshStandardMaterial({ map: makeFaceCanvas(String(value)) }),
+        new THREE.MeshStandardMaterial({ map: makeFaceCanvas(sideLabel) }),
+        new THREE.MeshStandardMaterial({ map: makeFaceCanvas(sideLabel) }),
+        new THREE.MeshStandardMaterial({ map: makeFaceCanvas(sideLabel) }),
+        new THREE.MeshStandardMaterial({ map: makeFaceCanvas(sideLabel) }),
+        new THREE.MeshStandardMaterial({ map: makeFaceCanvas(sideLabel) })
       ];
+    }
+
+    function createTrueGeometry(sides, size = 1.0) {
+      switch (sides) {
+        case 4:
+          return new THREE.TetrahedronGeometry(size);
+        case 6:
+          return new THREE.BoxGeometry(size * 1.4, size * 1.4, size * 1.4);
+        case 8:
+          return new THREE.OctahedronGeometry(size);
+        case 12:
+          return new THREE.DodecahedronGeometry(size);
+        case 20:
+          return new THREE.IcosahedronGeometry(size);
+        default:
+          return new THREE.BoxGeometry(size * 1.4, size * 1.4, size * 1.4);
+      }
+    }
+
+    function createTrueCannonShape(sides, size = 1.0) {
+      switch (sides) {
+        case 4: {
+          const s = size;
+          return new CANNON.ConvexPolyhedron({
+            vertices: [
+              new CANNON.Vec3( s,  s,  s),
+              new CANNON.Vec3(-s, -s,  s),
+              new CANNON.Vec3(-s,  s, -s),
+              new CANNON.Vec3( s, -s, -s)
+            ],
+            faces: [
+              [0, 2, 1],
+              [0, 1, 3],
+              [0, 3, 2],
+              [1, 2, 3]
+            ]
+          });
+        }
+        case 6: {
+          const s = size * 0.7;
+          return new CANNON.Box(new CANNON.Vec3(s, s, s));
+        }
+        case 8: {
+          const s = size;
+          return new CANNON.ConvexPolyhedron({
+            vertices: [
+              new CANNON.Vec3( s, 0, 0),
+              new CANNON.Vec3(-s, 0, 0),
+              new CANNON.Vec3(0,  s, 0),
+              new CANNON.Vec3(0, -s, 0),
+              new CANNON.Vec3(0, 0,  s),
+              new CANNON.Vec3(0, 0, -s)
+            ],
+            faces: [
+              [0,2,4],[2,1,4],[1,3,4],[3,0,4],
+              [2,0,5],[1,2,5],[3,1,5],[0,3,5]
+            ]
+          });
+        }
+        case 12:
+        case 20: {
+          const geom = createTrueGeometry(sides, size);
+          const pos = geom.attributes.position.array;
+          const verts = [];
+          for (let i = 0; i < pos.length; i += 3) {
+            verts.push(new CANNON.Vec3(pos[i], pos[i + 1], pos[i + 2]));
+          }
+
+          const faces = [];
+          for (let i = 0; i < verts.length; i += 3) {
+            faces.push([i, i + 1, i + 2]);
+          }
+
+          return new CANNON.ConvexPolyhedron({ vertices: verts, faces });
+        }
+        default: {
+          const s = size * 0.7;
+          return new CANNON.Box(new CANNON.Vec3(s, s, s));
+        }
+      }
+    }
+
+    function createDieVisual(value, sides) {
+      const truePoly = [4, 6, 8, 12, 20].includes(sides);
+
+      if (truePoly) {
+        const geometry = createTrueGeometry(sides, 0.95);
+        const material = new THREE.MeshStandardMaterial({
+          color: 0xe5e1d5,
+          roughness: 0.55,
+          metalness: 0.08,
+          flatShading: true
+        });
+        const mesh = new THREE.Mesh(geometry, material);
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
+
+        const spriteMap = makeFaceCanvas(String(value));
+        const spriteMat = new THREE.SpriteMaterial({ map: spriteMap, transparent: true });
+        const sprite = new THREE.Sprite(spriteMat);
+        sprite.scale.set(0.9, 0.9, 0.9);
+        sprite.position.set(0, 1.05, 0);
+        mesh.add(sprite);
+
+        return mesh;
+      }
+
+      const geometry = new THREE.BoxGeometry(1.4, 1.4, 1.4);
+      const materials = makeFaceMaterials(value, sides);
       const mesh = new THREE.Mesh(geometry, materials);
       mesh.castShadow = true;
       mesh.receiveShadow = true;
       return mesh;
     }
 
-    function createDieBody(size = 1.1) {
+    function createDieBody(sides) {
       return new CANNON.Body({
         mass: 1,
         material: diceMaterial,
-        shape: new CANNON.Box(new CANNON.Vec3(size / 2, size / 2, size / 2)),
+        shape: createTrueCannonShape(sides, 0.95),
         linearDamping: 0.18,
         angularDamping: 0.18
       });
@@ -756,10 +856,10 @@
       clearDice();
 
       rolls.forEach((value, index) => {
-        const mesh = createDieMesh(value, sides);
-        const body = createDieBody();
+        const mesh = createDieVisual(value, sides);
+        const body = createDieBody(sides);
 
-        const spread = (index - (rolls.length - 1) / 2) * 1.2;
+        const spread = (index - (rolls.length - 1) / 2) * 1.4;
         body.position.set(spread, 6 + Math.random() * 2, (Math.random() - 0.5) * 2);
         body.velocity.set((Math.random() - 0.5) * 6, 0, (Math.random() - 0.5) * 6);
         body.angularVelocity.set(
@@ -802,9 +902,6 @@
       renderer.render(scene, camera);
     }
 
-    // ----------------------------
-    // Rolling logic
-    // ----------------------------
     function runRoll(count, sides, modifier = 0, labelOverride = null) {
       const rolls = Array.from({ length: count }, () => randomDie(sides));
 
@@ -832,7 +929,7 @@
     }
 
     rollButtonEl.addEventListener('click', () => {
-      const count = Math.max(1, Math.min(12, parseInt(diceCountEl.value || '1', 10)));
+      const count = Math.max(1, Math.min(10, parseInt(diceCountEl.value || '1', 10)));
       const sides = parseInt(dieTypeEl.value, 10);
       diceCountEl.value = count;
       runRoll(count, sides, 0);
