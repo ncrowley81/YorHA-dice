@@ -109,7 +109,6 @@
       text-align: center;
       font-size: 10px;
       letter-spacing: .18em;
-      text-transform: uppercase;
       color: var(--muted);
       writing-mode: vertical-rl;
       transform: rotate(180deg);
@@ -179,6 +178,7 @@
 
     .page {
       min-width: 0;
+      display: none;
     }
 
     .topbar{
@@ -237,7 +237,6 @@
       letter-spacing: .16em;
       font-weight: 600;
       font-size: 30px;
-      text-transform: uppercase;
     }
 
     .hero p {
@@ -360,6 +359,8 @@
       height: 380px;
       display: block;
       background: transparent;
+      position: relative;
+      z-index: 0;
     }
 
     .tray-overlay{
@@ -373,6 +374,36 @@
       letter-spacing:.16em;
       opacity:.7;
       pointer-events:none;
+    }
+
+    .scanSweep{
+      position:absolute;
+      inset:0;
+      pointer-events:none;
+      z-index:1;
+      overflow:hidden;
+    }
+
+    .scanSweep::before{
+      content:"";
+      position:absolute;
+      left:0;
+      right:0;
+      top:-18%;
+      height:22%;
+      background:linear-gradient(
+        to bottom,
+        rgba(255,255,255,0),
+        rgba(255,255,255,0.045),
+        rgba(255,255,255,0)
+      );
+      animation:scanSweepMove 4.2s linear infinite;
+      opacity:.55;
+    }
+
+    @keyframes scanSweepMove{
+      0%{ transform:translateY(0); }
+      100%{ transform:translateY(560%); }
     }
 
     .resultBox {
@@ -629,6 +660,7 @@
 
             <div id="trayWrap">
               <div class="tray-overlay">Display: Active</div>
+              <div class="scanSweep"></div>
               <canvas id="tray"></canvas>
             </div>
 
@@ -731,6 +763,7 @@
           page.style.display = 'block';
           resizeCanvas();
           drawTray();
+          if (!animationFrame) animationFrame = requestAnimationFrame(stepDice);
           updateClock();
           setInterval(updateClock, 1000);
           updateRailActive();
@@ -745,7 +778,7 @@
         el: document.getElementById(item.dataset.target)
       }));
 
-      let best = targets[0];
+      let best = null;
 
       for (const entry of targets) {
         const rect = entry.el.getBoundingClientRect();
@@ -855,6 +888,7 @@
     }
 
     let audioCtx = null;
+    let tickInterval = null;
 
     function getAudio() {
       if (!audioCtx) {
@@ -900,6 +934,20 @@
       tone(150, 0.14, 'sawtooth', 0.018, 0.06);
     }
 
+    function startRollTicks() {
+      stopRollTicks();
+      tickInterval = setInterval(() => {
+        tone(760, 0.018, 'square', 0.006, 0);
+      }, 85);
+    }
+
+    function stopRollTicks() {
+      if (tickInterval) {
+        clearInterval(tickInterval);
+        tickInterval = null;
+      }
+    }
+
     rollButtonEl.addEventListener('mouseenter', () => tone(520, 0.03, 'square', 0.01, 0));
 
     const canvas = document.getElementById('tray');
@@ -937,15 +985,32 @@
     }
 
     function drawTargeting(w, h) {
+      const now = performance.now() / 1000;
+      const pulse = 0.35 + ((Math.sin(now * 2.2) + 1) / 2) * 0.25;
+
       ctx.save();
-      ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+      ctx.strokeStyle = `rgba(255,255,255,${0.08 + pulse * 0.18})`;
       ctx.lineWidth = 1;
 
+      const cx = w / 2;
+      const cy = h / 2;
+      const arm = 40;
+      const gap = 10;
+
       ctx.beginPath();
-      ctx.moveTo(w / 2 - 40, h / 2);
-      ctx.lineTo(w / 2 + 40, h / 2);
-      ctx.moveTo(w / 2, h / 2 - 40);
-      ctx.lineTo(w / 2, h / 2 + 40);
+      ctx.moveTo(cx - arm, cy);
+      ctx.lineTo(cx - gap, cy);
+      ctx.moveTo(cx + gap, cy);
+      ctx.lineTo(cx + arm, cy);
+      ctx.moveTo(cx, cy - arm);
+      ctx.lineTo(cx, cy - gap);
+      ctx.moveTo(cx, cy + gap);
+      ctx.lineTo(cx, cy + arm);
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.arc(cx, cy, 12 + pulse * 4, 0, Math.PI * 2);
+      ctx.strokeStyle = `rgba(255,255,255,${0.05 + pulse * 0.12})`;
       ctx.stroke();
 
       ctx.restore();
@@ -1024,6 +1089,7 @@
       const w = canvas.clientWidth;
       const h = canvas.clientHeight;
       let moving = false;
+      let stillCycling = false;
       const now = performance.now();
 
       for (const die of diceSprites) {
@@ -1034,6 +1100,7 @@
 
         if (now < die.cycleUntil) {
           die.displayValue = Math.floor(Math.random() * die.sides) + 1;
+          stillCycling = true;
         } else {
           die.displayValue = die.value;
         }
@@ -1071,13 +1138,15 @@
         }
       }
 
+      if (stillCycling) {
+        startRollTicks();
+      } else {
+        stopRollTicks();
+      }
+
       drawTray();
 
-      if (moving) {
-        animationFrame = requestAnimationFrame(stepDice);
-      } else {
-        animationFrame = null;
-      }
+      animationFrame = requestAnimationFrame(stepDice);
     }
 
     function shapeForSides(sides) {
@@ -1094,8 +1163,6 @@
     }
 
     function throwDiceSprites(rolls, sides) {
-      if (animationFrame) cancelAnimationFrame(animationFrame);
-
       const w = canvas.clientWidth;
       const shape = shapeForSides(sides);
       const now = performance.now();
@@ -1136,7 +1203,6 @@
       });
 
       drawTray();
-      animationFrame = requestAnimationFrame(stepDice);
     }
 
     function runRoll(count, sides, modifier = 0, labelOverride = null) {
@@ -1145,6 +1211,7 @@
       const audio = getAudio();
       if (audio && audio.state === 'suspended') audio.resume();
 
+      stopRollTicks();
       playRollSound();
       throwDiceSprites(rolls, sides);
 
@@ -1191,6 +1258,8 @@
       drawTray();
       updateRailActive();
     });
+
+    window.addEventListener('beforeunload', stopRollTicks);
 
     renderHistory();
     renderStats();
