@@ -516,64 +516,181 @@
     @media (max-width: 980px) {
       .appShell{
         grid-template-columns: 1fr;
+        padding: 10px;
+        gap: 10px;
       }
 
       .navRail{
-        min-height:auto;
-        position:relative;
-        top:auto;
-        flex-direction:row;
-        justify-content:center;
-        padding:10px 12px;
+        min-height: auto;
+        position: relative;
+        top: auto;
+        flex-direction: row;
+        justify-content: space-between;
+        align-items: center;
+        padding: 10px 12px;
+        gap: 10px;
       }
 
       .railBrand{
-        writing-mode:horizontal-tb;
-        transform:none;
-        padding-top:0;
+        writing-mode: horizontal-tb;
+        transform: none;
+        padding-top: 0;
+        font-size: 9px;
+        letter-spacing: .12em;
+        width: auto;
       }
 
       .railNav{
         flex-direction: row;
         justify-content: center;
+        gap: 12px;
+        width: auto;
       }
 
       .railItem{
         width: auto;
         flex-direction: row;
+        gap: 6px;
       }
 
       .railLabel{
-        writing-mode:horizontal-tb;
-        transform:none;
+        writing-mode: horizontal-tb;
+        transform: none;
+        font-size: 9px;
+        letter-spacing: .14em;
       }
-    }
 
-    @media (max-width: 900px) {
-      .grid {
+      .topbar{
+        font-size: 10px;
+        gap: 8px;
+        margin-bottom: 10px;
+      }
+
+      .topbar-left,
+      .topbar-right{
+        gap: 10px;
+      }
+
+      .hero{
+        padding: 14px 16px;
+        margin-bottom: 12px;
+      }
+
+      .hero h1{
+        font-size: 24px;
+        line-height: 1.15;
+        letter-spacing: .1em;
+      }
+
+      .hero p{
+        font-size: 11px;
+        line-height: 1.4;
+      }
+
+      .grid{
         grid-template-columns: 1fr;
+        gap: 12px;
       }
-    }
 
-    @media (max-width: 700px) {
-      .controls {
+      .card{
+        padding: 14px;
+        margin-bottom: 12px;
+      }
+
+      .controls{
         grid-template-columns: 1fr;
+        gap: 8px;
       }
 
-      .statsGrid {
-        grid-template-columns: 1fr;
-      }
-
-      .appShell {
+      select, input, button{
+        font-size: 16px;
         padding: 12px;
       }
 
-      #tray {
-        height: 300px;
+      #tray{
+        height: 260px;
       }
 
-      .resultMain {
-        font-size: 42px;
+      .resultBox{
+        min-height: 96px;
+        padding: 12px;
+      }
+
+      .resultMain{
+        font-size: 40px;
+      }
+
+      .resultSub{
+        font-size: 13px;
+      }
+
+      .statsGrid{
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+      }
+
+      .statBox{
+        padding: 10px;
+      }
+
+      .statValue{
+        font-size: 22px;
+      }
+
+      .historyItem{
+        padding: 10px;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .appShell{
+        padding: 8px;
+      }
+
+      .navRail{
+        padding: 8px 10px;
+        overflow-x: auto;
+        justify-content: flex-start;
+      }
+
+      .railNav{
+        gap: 10px;
+      }
+
+      .topbar{
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        row-gap: 6px;
+      }
+
+      .topbar-right{
+        justify-content: flex-start;
+      }
+
+      .hero h1{
+        font-size: 20px;
+        letter-spacing: .08em;
+      }
+
+      .hero p{
+        font-size: 10px;
+      }
+
+      #tray{
+        height: 220px;
+      }
+
+      .resultMain{
+        font-size: 34px;
+      }
+
+      .statsGrid{
+        grid-template-columns: 1fr;
+      }
+
+      .footerbar{
+        flex-direction: column;
+        gap: 4px;
       }
     }
   </style>
@@ -619,7 +736,7 @@
 
       <div class="hero">
         <h1>YoRHa Dice Interface</h1>
-        <p>Tactical Probability Engine • Terminal Display</p>
+        <p>Tactical Probability Engine</p>
       </div>
 
       <div class="grid">
@@ -935,7 +1052,7 @@
     }
 
     function startRollTicks() {
-      stopRollTicks();
+      if (tickInterval) return;
       tickInterval = setInterval(() => {
         tone(760, 0.018, 'square', 0.006, 0);
       }, 85);
@@ -1088,7 +1205,6 @@
     function stepDice() {
       const w = canvas.clientWidth;
       const h = canvas.clientHeight;
-      let moving = false;
       let stillCycling = false;
       const now = performance.now();
 
@@ -1128,9 +1244,12 @@
           die.vy *= -0.78;
         }
 
-        if (Math.abs(die.vx) > 0.08 || Math.abs(die.vy) > 0.08 || Math.abs(die.spin) > 0.01 || now < die.cycleUntil) {
-          moving = true;
-        } else {
+        if (
+          Math.abs(die.vx) <= 0.08 &&
+          Math.abs(die.vy) <= 0.08 &&
+          Math.abs(die.spin) <= 0.01 &&
+          now >= die.cycleUntil
+        ) {
           die.vx = 0;
           die.vy = 0;
           die.spin = 0;
@@ -1145,7 +1264,6 @@
       }
 
       drawTray();
-
       animationFrame = requestAnimationFrame(stepDice);
     }
 
